@@ -1,7 +1,6 @@
 import json
 import random
 
-# Dictionnaires de données pour l'augmentation
 names = ["Ahmed", "Samira", "Walid", "Amine", "Sarah", "Mom", "Dad", "Leila", "Boss"]
 numbers = ["55123456", "22888999", "98765432", "20111222", "50444333"]
 messages = ["I am outside", "Call me back soon", "Happy Birthday!", "I will be late by 10 minutes", "Meeting confirmed"]
@@ -19,11 +18,10 @@ templates = [
 
 dataset = []
 
-for _ in range(3000): # On génère 300 exemples variés
+for _ in range(3000):
     tpl = random.choice(templates)
     utterance = random.choice(tpl['utterances'])
     
-    # Remplissage des variables
     val_name = random.choice(names)
     val_num = random.choice(numbers)
     val_msg = random.choice(messages)
@@ -32,7 +30,6 @@ for _ in range(3000): # On génère 300 exemples variés
     
     formatted_text = utterance.format(name=val_name, number=val_num, msg=val_msg, time=val_time, query=val_query)
     
-    # Formatage de la sortie technique (Target) selon TON code Kotlin
     if tpl['intent'] == "CALL": target = f"[ACTION_CALL:{val_name if 'name' in utterance else val_num}]"
     elif tpl['intent'] == "SMS": target = f"[ACTION_SMS:{val_name if 'name' in utterance else val_num}:{val_msg}]"
     elif tpl['intent'] == "ALARM": target = f"[ACTION_ALARM:{val_time.split(':')[0]}:{val_time.split(':')[1]}]"
