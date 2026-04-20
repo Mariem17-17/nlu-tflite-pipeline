@@ -1,45 +1,97 @@
 import json
 import random
 
-names = ["Ahmed", "Samira", "Walid", "Amine", "Sarah", "Mom", "Dad", "Leila", "Boss"]
-numbers = ["55123456", "22888999", "98765432", "20111222", "50444333"]
-messages = ["I am outside", "Call me back soon", "Happy Birthday!", "I will be late by 10 minutes", "Meeting confirmed"]
-times = ["08:00", "12:30", "20:00", "07:15", "22:45"]
-queries = ["coding in kotlin", "ISI Kef", "best couscous recipe", "Llama 3 explained"]
+N_SAMPLES = 10000
 
-templates = [
-    {"intent": "CALL", "utterances": ["Call {name}", "Dial {number}", "Phone {name}", "Appelle {name}"]},
-    {"intent": "SMS", "utterances": ["Send a text to {name} saying {msg}", "Tell {name} that {msg}", "SMS {number} {msg}", "Envoie un message à {name} pour dire {msg}"]},
-    {"intent": "ALARM", "utterances": ["Set alarm for {time}", "Wake me up at {time}", "Mets une alarme à {time}", "Réveille-moi à {time}"]},
-    {"intent": "YOUTUBE", "utterances": ["Search {query} on YouTube", "Play {query} on YT", "Cherche {query} sur Youtube"]},
-    {"intent": "CONTACT", "utterances": ["Add {name} with number {number}", "Save {name} as {number}", "Crée le contact {name} numéro {number}"]},
-    {"intent": "NOTE", "utterances": ["Take a note: {msg}", "Remember that {msg}", "Note que {msg}"]}
+NAMES = ["Ahmed", "Samira", "Walid", "Amine", "Sarah", "Leila", "Mom", "Dad", "Souhail"]
+NUMBERS = ["55123456", "22888999", "98765432", "20111222"]
+MESSAGES = [
+    "i will be late by ten minutes",
+    "call me back soon",
+    "happy birthday",
+    "meeting confirmed"
 ]
+QUERIES = ["llama three explained", "coding in kotlin", "best couscous recipe"]
 
-dataset = []
+DIGITS = {
+    "0": "zero", "1": "one", "2": "two", "3": "three",
+    "4": "four", "5": "five", "6": "six",
+    "7": "seven", "8": "eight", "9": "nine"
+}
 
-for _ in range(3000):
-    tpl = random.choice(templates)
-    utterance = random.choice(tpl['utterances'])
-    
-    val_name = random.choice(names)
-    val_num = random.choice(numbers)
-    val_msg = random.choice(messages)
-    val_time = random.choice(times)
-    val_query = random.choice(queries)
-    
-    formatted_text = utterance.format(name=val_name, number=val_num, msg=val_msg, time=val_time, query=val_query)
-    
-    if tpl['intent'] == "CALL": target = f"[ACTION_CALL:{val_name if 'name' in utterance else val_num}]"
-    elif tpl['intent'] == "SMS": target = f"[ACTION_SMS:{val_name if 'name' in utterance else val_num}:{val_msg}]"
-    elif tpl['intent'] == "ALARM": target = f"[ACTION_ALARM:{val_time.split(':')[0]}:{val_time.split(':')[1]}]"
-    elif tpl['intent'] == "YOUTUBE": target = f"[ACTION_YOUTUBE:{val_query}]"
-    elif tpl['intent'] == "CONTACT": target = f"[ACTION_ADD_CONTACT:{val_name}:{val_num}]"
-    elif tpl['intent'] == "NOTE": target = f"[ACTION_NOTE:{val_msg}]"
-    
-    dataset.append({"input": formatted_text, "output": target})
+def speak_number(num):
+    return " ".join(DIGITS[d] for d in num)
 
-with open('nlu_dataset.json', 'w', encoding='utf-8') as f:
-    json.dump(dataset, f, indent=4, ensure_ascii=False)
 
-print(f"Dataset de {len(dataset)} exemples généré avec succès !")
+def speak_time(h, m):
+    parts = []
+
+    if h >= 10:
+        parts.append(DIGITS[str(h // 10)])
+    parts.append(DIGITS[str(h % 10)])
+
+    parts.append(DIGITS[str(m // 10)])
+    parts.append(DIGITS[str(m % 10)])
+
+    return " ".join(parts)
+
+
+DATASET = []
+
+TEMPLATES = {
+    "CALL": [
+        lambda n, num: (f"call {n}", {"contact": n}),
+        lambda n, num: (f"dial {speak_number(num)}", {"number": num})
+    ],
+    "SMS": [
+        lambda n, msg: (f"send a message to {n}", {"contact": n}),
+        lambda n, msg: (f"text {n}", {"contact": n})
+    ],
+    "ALARM": [
+        lambda h, m: (f"set alarm for {h}:{m:02d}", {"time": f"{h:02d}:{m:02d}"}),
+        lambda h, m: (f"wake me up at {speak_time(h, m)}", {"time": f"{h:02d}:{m:02d}"})
+    ],
+    "CONTACT": [
+        lambda n, num: (
+            f"add contact {n} with number {speak_number(num)}",
+            {"contact": n, "number": num}
+        )
+    ],
+    "YOUTUBE": [
+        lambda q: (f"search {q} on youtube", {"query": q}),
+        lambda q: (f"play {q} on youtube", {"query": q})
+    ]
+}
+
+for _ in range(N_SAMPLES):
+    intent = random.choice(list(TEMPLATES.keys()))
+
+    name = random.choice(NAMES)
+    number = random.choice(NUMBERS)
+    msg = random.choice(MESSAGES)
+    query = random.choice(QUERIES)
+    hour = random.randint(0, 23)
+    minute = random.choice([0, 15, 30, 45])
+
+    if intent == "CALL":
+        text, slots = random.choice(TEMPLATES["CALL"])(name, number)
+    elif intent == "SMS":
+        text, slots = random.choice(TEMPLATES["SMS"])(name, msg)
+    elif intent == "ALARM":
+        text, slots = random.choice(TEMPLATES["ALARM"])(hour, minute)
+    elif intent == "CONTACT":
+        text, slots = random.choice(TEMPLATES["CONTACT"])(name, number)
+    elif intent == "YOUTUBE":
+        text, slots = random.choice(TEMPLATES["YOUTUBE"])(query)
+
+    DATASET.append({
+        "lang": "en",
+        "intent": intent,
+        "input": text.lower(),
+        "slots": slots
+    })
+
+with open("nlu_en_dataset.json", "w", encoding="utf-8") as f:
+    json.dump(DATASET, f, indent=2)
+
+print(f"Generated {len(DATASET)} English NLU samples")

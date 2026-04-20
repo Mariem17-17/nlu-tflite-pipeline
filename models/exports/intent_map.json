@@ -1,1 +1,1 @@
-{"ADD_CONTACT": 0, "ALARM": 1, "CALL": 2, "NOTE": 3, "SMS": 4, "YOUTUBE": 5}
+{"ALARM": 0, "CALL": 1, "CONTACT": 2, "SMS": 3, "YOUTUBE": 4}
